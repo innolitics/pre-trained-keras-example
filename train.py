@@ -1,3 +1,4 @@
+'''Builds a model, organizes and loads data, and runs model training.'''
 from collections import defaultdict
 
 
@@ -8,12 +9,12 @@ import keras
 import numpy as np
 import os
 import glob
-import tqdm
 import random
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 
 def get_model():
+    # TODO: make the pretrained model type an argument so we can try different ones.
     pretrained_model = keras.applications.inception_v3.InceptionV3(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     output = Flatten()(pretrained_model.output)
     output = BatchNormalization()(output)

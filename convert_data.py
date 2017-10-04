@@ -1,3 +1,7 @@
+"""
+Reads image files, decodes jpeg, resizes them, and stores them into an npz so
+these operations do not have to be performed more than once.
+"""
 import numpy as np
 # import keras
 import matplotlib.pyplot as plt

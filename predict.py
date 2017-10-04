@@ -1,3 +1,5 @@
+'''Using an already trained model, run predictions on unknown images.'''
+
 import random
 import numpy as np
 import pydot
@@ -35,5 +37,5 @@ for character_name, npz_paths in test_character_name_to_npz_path.items():
             color='cyan', ecolor='black')
     ax2.set_yticks(y_pos)
     ax2.set_yticklabels(top_character_names, position=(1,0))
-    ax2.invert_yaxis()  # labels read top-to-bottom
+    ax2.invert_yaxis()
     plt.show()
