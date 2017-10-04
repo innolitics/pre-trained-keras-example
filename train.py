@@ -30,6 +30,7 @@ def get_model():
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
+    return model
 
 partition_to_character_name_to_npz_paths = {
     'train': defaultdict(list),
