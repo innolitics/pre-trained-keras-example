@@ -1,41 +1,32 @@
 '''Using an already trained model, run predictions on unknown images.'''
-
-import random
+import json
+import tqdm
 import numpy as np
-import pydot
 import matplotlib.pyplot as plt
+import os
 
 from train import partition_to_character_name_to_npz_paths, one_hot_decode
-
+import pydot
 pydot.find_graphviz = lambda: True
 from keras.models import load_model
 
-model = load_model('weights.505.h5')
+model = load_model('all_networks/weights.46.h5')
 
 # from keras.utils import plot_model
 # plot_model(model, to_file='model.pdf')
 
-test_character_name_to_npz_path = partition_to_character_name_to_npz_paths['test']
+test_character_name_to_npz_path = {**partition_to_character_name_to_npz_paths['test'], **partition_to_character_name_to_npz_paths['validation']}
 
-for character_name, npz_paths in test_character_name_to_npz_path.items():
-    random_npz_path = random.choice(npz_paths)
-    pixels = np.load(random_npz_path)['pixels']
+output_json_name = 'all_predictions.json'
+character_to_predictions = {}
+json.dump(character_to_predictions, open(output_json_name, 'w'))
+
+flattened = [(character_name, npz_path) for character_name, npz_paths in test_character_name_to_npz_path.items() for npz_path in npz_paths]
+for character_name, npz_path in tqdm.tqdm(flattened):
+    npz_name = os.path.basename(npz_path)
+    pixels = np.load(npz_path)['pixels']
     predicted_labels = model.predict(np.array([pixels]), batch_size=1)
-    character_name_to_probability = one_hot_decode(predicted_labels[0])
-    top_character_probability = sorted(character_name_to_probability.items(),
-                                       key=lambda item_tup: item_tup[1],
-                                       reverse=True)[:3]
-    top_character_names, top_character_probabilities = zip(*top_character_probability)
-    print(top_character_probability)
+    character_name_to_probability = one_hot_decode(predicted_labels[0].astype(np.float64))
+    character_to_predictions.setdefault(character_name, {})[npz_name] = character_name_to_probability
 
-    ax1 = plt.subplot2grid((7, 1), (0, 0), rowspan=6)
-    ax1.set_title(character_name)
-    ax2 = plt.subplot2grid((7, 1), (6, 0), rowspan=1)
-    ax1.imshow(pixels)
-    y_pos = np.arange(len(top_character_names))*0.11
-    ax2.barh(y_pos, top_character_probabilities, height=0.1, align='center',
-            color='cyan', ecolor='black')
-    ax2.set_yticks(y_pos)
-    ax2.set_yticklabels(top_character_names, position=(1,0))
-    ax2.invert_yaxis()
-    plt.show()
+json.dump(character_to_predictions, open(output_json_name, 'w'))
