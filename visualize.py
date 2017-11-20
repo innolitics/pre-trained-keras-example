@@ -52,18 +52,19 @@ def plot_row(npz_name_character_probability_tup, row_index, row_title):
         fig.add_subplot(image_ax)
         fig.add_subplot(labels_ax)
 
-for character_name in tqdm.tqdm(character_to_predictions):
-    num_samples = len(character_to_predictions[character_name])
-    if num_samples < num_rows*num_columns:
-        print("not enough samples for {} to make a useful plot, skipping".format(character_name))
-        continue
+if __name__ =='__main__':
+    for character_name in tqdm.tqdm(character_to_predictions):
+        num_samples = len(character_to_predictions[character_name])
+        if num_samples < num_rows*num_columns:
+            print("not enough samples for {} to make a useful plot, skipping".format(character_name))
+            continue
 
-    accuracy = len(list(filter(lambda v: v[character_name] >= 0.5, character_to_predictions[character_name].values()))) / num_samples
-    fig = plt.figure(figsize=(16, 13))
-    fig.suptitle('{}. Overall accuracy {:.1f}%. Number Samples {}.'.format(character_name, accuracy*100, num_samples))
-    outer = gridspec.GridSpec(num_rows, num_columns, wspace=0.05, hspace=0.3)
-    plot_row(sorted_on_performance(character_name, distance_from=1)[:num_columns], 0, "Best performers")
-    plot_row(sorted_on_performance(character_name, distance_from=0.5)[:num_columns], 1, "OK performers")
-    plot_row(sorted_on_performance(character_name, distance_from=0)[:num_columns], 2,  "Worst performers")
-    plt.savefig('results_visualization/{}.pdf'.format(character_name))
-    plt.close('all')
+        accuracy = len(list(filter(lambda v: v[character_name] >= 0.5, character_to_predictions[character_name].values()))) / num_samples
+        fig = plt.figure(figsize=(16, 13))
+        fig.suptitle('{}. Overall accuracy {:.1f}%. Number Samples {}.'.format(character_name, accuracy*100, num_samples))
+        outer = gridspec.GridSpec(num_rows, num_columns, wspace=0.05, hspace=0.3)
+        plot_row(sorted_on_performance(character_name, distance_from=1)[:num_columns], 0, "Best performers")
+        plot_row(sorted_on_performance(character_name, distance_from=0.5)[:num_columns], 1, "OK performers")
+        plot_row(sorted_on_performance(character_name, distance_from=0)[:num_columns], 2,  "Worst performers")
+        plt.savefig('results_visualization/{}.pdf'.format(character_name))
+        plt.close('all')

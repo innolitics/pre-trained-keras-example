@@ -12,6 +12,8 @@ import numpy as np
 import os
 import glob
 import random
+
+from keras.layers.pooling import GlobalAveragePooling2D
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 
@@ -22,6 +24,8 @@ def get_model(args):
         pretrained_model = keras.applications.xception.Xception(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif args.pretrained_model == 'resnet50':
         pretrained_model = keras.applications.resnet50.ResNet50(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
+    elif args.pretrained_model == 'vgg19':
+        pretrained_model = keras.applications.vgg19.VGG19(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif args.pretrained_model == 'all':
         input = Input(shape=(*IMG_SIZE, 3))
         inception_model = keras.applications.inception_v3.InceptionV3(include_top=False, input_tensor=input, weights='imagenet')
@@ -32,16 +36,14 @@ def get_model(args):
                              Flatten()(resnet_model.output)]
         output = Concatenate()(flattened_outputs)
         pretrained_model = Model(input, output)
-    if pretrained_model.output.shape.ndims > 2:
-        output = Flatten()(pretrained_model.output)
-    else:
-        output = pretrained_model.output
-    output = BatchNormalization()(output)
-    output = Dropout(0.5)(output)
-    output = Dense(128, activation='relu')(output)
-    output = BatchNormalization()(output)
-    output = Dropout(0.5)(output)
-    output = Dense(128, activation='relu')(output)
+
+    # if pretrained_model.output.shape.ndims > 2:
+    #     output = Flatten()(pretrained_model.output)
+    # else:
+    #     output = pretrained_model.output
+    output = pretrained_model.output
+
+    output = GlobalAveragePooling2D()(output)
     output = BatchNormalization()(output)
     output = Dropout(0.5)(output)
     output = Dense(len(all_character_names), activation='softmax')(output)
@@ -51,10 +53,10 @@ def get_model(args):
     model.summary(line_length=200)
 
     # Generate a plot of a model
-    # import pydot
-    # pydot.find_graphviz = lambda: True
-    # from keras.utils import plot_model
-    # plot_model(model, to_file='model.pdf')
+    import pydot
+    pydot.find_graphviz = lambda: True
+    from keras.utils import plot_model
+    plot_model(model, to_file='model.pdf', show_shapes=True)
 
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
@@ -67,7 +69,7 @@ partition_to_character_name_to_npz_paths = {
     'test': defaultdict(list),
 }
 all_character_names = set()
-npz_file_listing = list(glob.glob('simpsons_dataset/**/*.npz'))
+npz_file_listing = list(glob.glob('/nas/fast2/simpsons_dataset_256_256/**/*.npz'))
 for npz_path in npz_file_listing:
     character_name = os.path.basename(os.path.dirname(npz_path))
     all_character_names.add(character_name)
@@ -82,11 +84,17 @@ for npz_path in npz_file_listing:
     partition_to_character_name_to_npz_paths[partition][character_name].append(npz_path)
 all_character_names = sorted(list(all_character_names))
 
+
 def one_hot_encode(character_name):
     one_hot_encoded_vector = np.zeros(len(all_character_names))
-    idx = all_character_names.index(character_name)
+    idx = one_hot_index(character_name)
     one_hot_encoded_vector[idx] = 1
     return one_hot_encoded_vector
+
+
+def one_hot_index(character_name):
+    return all_character_names.index(character_name)
+
 
 def one_hot_decode(predicted_labels):
     return dict(zip(all_character_names, predicted_labels))
@@ -129,7 +137,7 @@ def batch_generator(partition, batch_size, augmented=True):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pretrained_model', choices={'inception', 'xception', 'resnet50', 'all'})
+    parser.add_argument('--pretrained_model', choices={'inception', 'xception', 'resnet50', 'all', 'vgg19'})
     args = parser.parse_args()
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir='tensorboard', histogram_freq=0, write_graph=True, write_images=False)
     save_model_callback = keras.callbacks.ModelCheckpoint('weights.{epoch:02d}.h5',  verbose=3, save_best_only=True, save_weights_only=False, mode='auto', period=1)

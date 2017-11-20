@@ -10,7 +10,7 @@ import pydot
 pydot.find_graphviz = lambda: True
 from keras.models import load_model
 
-model = load_model('all_networks/weights.46.h5')
+model = load_model('vgg/weights.10.h5')
 
 # from keras.utils import plot_model
 # plot_model(model, to_file='model.pdf')
