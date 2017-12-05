@@ -10,12 +10,7 @@ import pydot
 pydot.find_graphviz = lambda: True
 from keras.models import load_model
 
-# model = load_model('vgg/weights.10.h5')
-
-# from keras.utils import plot_model
-# plot_model(model, to_file='model.pdf')
-
-def get_model_predictions(model, data_classifier, output_json_name):
+def get_model_predictions(model, data_classifier):
 
     test_character_name_to_npz_path = {
         **data_classifier.partition_to_character_name_to_npz_paths['test'],
@@ -23,7 +18,6 @@ def get_model_predictions(model, data_classifier, output_json_name):
     }
 
     character_to_predictions = {}
-    json.dump(character_to_predictions, open(output_json_name, 'w'))
 
     flattened = [(character_name, npz_path) for character_name, npz_paths in test_character_name_to_npz_path.items() for npz_path in npz_paths]
     for character_name, npz_path in tqdm.tqdm(flattened):
@@ -33,5 +27,10 @@ def get_model_predictions(model, data_classifier, output_json_name):
         character_name_to_probability = data_classifier.one_hot_decode(predicted_labels[0].astype(np.float64))
         character_to_predictions.setdefault(character_name, {})[npz_name] = character_name_to_probability
 
-    json.dump(character_to_predictions, open(output_json_name, 'w'))
     return character_to_predictions
+
+def get_model_predictions_for_npz(model, data_classifier, character_name, npz_name):
+    npz_file_path = os.path.join(data_classifier.data_path, character_name, npz_name)
+    pixels = np.load(npz_file_path)['pixels']
+    predicted_labels = model.predict(np.array([pixels]), batch_size=1)
+    return data_classifier.one_hot_decode(predicted_labels[0].astype(np.float64))

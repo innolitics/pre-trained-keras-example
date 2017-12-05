@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# create_cam_gif <model> <character> <npz_file>
+function create_cam_gif() {
+    final_gif_name="../data_dir/cam_output/$1/$2/$3/$2_$3.gif"
+    mkdir -p ../data_dir/cam_output/$1/$2/$3
+    CUDA_VISIBLE_DEVICES='' DISPLAY=:2 python cam_animation.py --weight-directory ../data_dir/weights/$1 --data-directory ../data_dir/simpsons_dataset --image-path ../data_dir/simpsons_dataset/$2/$3 --cam-path ../data_dir/cam_output/$1/$2/$3 --weight-limit 35
+    convert -delay 40  -size 256x256 ../data_dir/cam_output/$1/$2/$3/*.png -loop 0 $final_gif_name
+}
+
+if [[ $# != 3 ]]; then
+    echo "./generate_cam_gifs <model> <character> <npz_file>"
+else
+    create_cam_gif $@
+fi

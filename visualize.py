@@ -8,9 +8,6 @@ import matplotlib.gridspec as gridspec
 num_columns = 6
 num_rows = 3
 
-output_json_name = 'all_predictions.json'
-character_to_predictions = json.load(open(output_json_name))
-
 def plot_row_item(image_ax, labels_ax, pixels, top_character_names, top_character_probabilities):
     image_ax.imshow(pixels, interpolation='nearest', aspect='auto')
     y_pos = np.arange(len(top_character_names))*0.11

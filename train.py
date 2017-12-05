@@ -17,7 +17,7 @@ from keras.layers.pooling import GlobalAveragePooling2D
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 
-def get_model(pretrained_model):
+def get_model(pretrained_model, all_character_names):
     if pretrained_model == 'inception':
         pretrained_model = keras.applications.inception_v3.InceptionV3(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif pretrained_model == 'xception':
@@ -37,10 +37,6 @@ def get_model(pretrained_model):
         output = Concatenate()(flattened_outputs)
         pretrained_model = Model(input, output)
 
-    # if pretrained_model.output.shape.ndims > 2:
-    #     output = Flatten()(pretrained_model.output)
-    # else:
-    #     output = pretrained_model.output
     output = pretrained_model.output
 
     output = GlobalAveragePooling2D()(output)
@@ -51,12 +47,6 @@ def get_model(pretrained_model):
     for layer in pretrained_model.layers:
         layer.trainable = False
     model.summary(line_length=200)
-
-    # Generate a plot of a model
-    import pydot
-    pydot.find_graphviz = lambda: True
-    from keras.utils import plot_model
-    plot_model(model, to_file='model.pdf', show_shapes=True)
 
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
@@ -79,6 +69,7 @@ image_datagen = ImageDataGenerator(
 class DataClassifier():
     def __init__(self, data_path):
         print('Beginning character partition')
+        self.data_path = data_path
         self.partition_to_character_name_to_npz_paths = {
             'train': defaultdict(list),
             'validation': defaultdict(list),
@@ -149,16 +140,14 @@ if __name__ == '__main__':
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=args.tensorboard_directory, histogram_freq=0, write_graph=True, write_images=False)
     save_model_callback = keras.callbacks.ModelCheckpoint(os.path.join(args.weight_directory, 'weights.{epoch:02d}.h5'), verbose=3, save_best_only=False, save_weights_only=False, mode='auto', period=1)
 
-    model = get_model(args.pretrained_model)
     data_classifier = DataClassifier(args.data_dir)
+    model = get_model(args.pretrained_model, data_classifier.all_character_names)
 
     model.fit_generator(
         data_classifier.batch_generator('train', batch_size=BATCH_SIZE),
-        # steps_per_epoch=len(npz_file_listing)*0.7 // BATCH_SIZE,
-        steps_per_epoch=200,
+        steps_per_epoch=50,
         epochs=99999,
         validation_data=data_classifier.batch_generator('validation', batch_size=BATCH_SIZE, augmented=False),
-        # validation_steps=len(npz_file_listing)*0.2 // BATCH_SIZE
         validation_steps=10,
         callbacks=[save_model_callback, tensorboard_callback],
         workers=4,
