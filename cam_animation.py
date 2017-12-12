@@ -46,6 +46,9 @@ if __name__ == '__main__':
     print('Beginning to sort weights in {}'.format(os.path.join(args.weight_directory, '*.h5')))
     weights = sorted(list(glob(os.path.join(args.weight_directory, '*.h5'))))
 
+    model_name = os.path.basename(args.weight_directory)
+
+
     print("Beginning CAM plots")
     for idx, weight in enumerate(tqdm.tqdm(weights[:args.weight_limit], unit='weights')):
         if args.weight_limit and idx >= args.weight_limit:
@@ -70,7 +73,7 @@ if __name__ == '__main__':
 
         plot_row_item(image_ax, labels_ax, cam, top_character_names, top_character_probabilities)
         labels_ax.set_xlabel(npz_name)
-        image_ax.set_title(os.path.basename(weight))
+        image_ax.set_title(model_name + ', epoch ' + os.path.basename(weight).split('.')[1])
 
         fig.add_subplot(image_ax)
         fig.add_subplot(labels_ax)
@@ -78,3 +81,6 @@ if __name__ == '__main__':
         idx_str = str(idx) if idx > 9 else '0'+str(idx)
         plt.savefig(os.path.join(args.cam_path, 'cam_{}.png'.format(idx_str)))
         plt.close(fig)
+        del cam
+        del fig
+        del model
