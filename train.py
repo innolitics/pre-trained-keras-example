@@ -37,9 +37,16 @@ def get_model(pretrained_model, all_character_names):
         output = Concatenate()(flattened_outputs)
         pretrained_model = Model(input, output)
 
-    output = pretrained_model.output
+    print(pretrained_model.output.shape.ndims)
 
-    output = GlobalAveragePooling2D()(output)
+    if pretrained_model.output.shape.ndims > 2:
+        output = Flatten()(pretrained_model.output)
+    else:
+        output = pretrained_model.output
+
+    output = BatchNormalization()(output)
+    output = Dropout(0.5)(output)
+    output = Dense(128, activation='relu')(output)
     output = BatchNormalization()(output)
     output = Dropout(0.5)(output)
     output = Dense(len(all_character_names), activation='softmax')(output)
@@ -68,7 +75,6 @@ image_datagen = ImageDataGenerator(
 
 class DataClassifier():
     def __init__(self, data_path):
-        print('Beginning character partition')
         self.data_path = data_path
         self.partition_to_character_name_to_npz_paths = {
             'train': defaultdict(list),
@@ -136,6 +142,8 @@ if __name__ == '__main__':
                         help="Directory containing the model weight files")
     parser.add_argument('--tensorboard-directory', required=True,
                         help="Directory containing the Tensorboard log files")
+    parser.add_argument('--epochs', required=True, type=int,
+                        help="Number of epochs to train over.")
     args = parser.parse_args()
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=args.tensorboard_directory, histogram_freq=0, write_graph=True, write_images=False)
     save_model_callback = keras.callbacks.ModelCheckpoint(os.path.join(args.weight_directory, 'weights.{epoch:02d}.h5'), verbose=3, save_best_only=False, save_weights_only=False, mode='auto', period=1)
@@ -145,8 +153,8 @@ if __name__ == '__main__':
 
     model.fit_generator(
         data_classifier.batch_generator('train', batch_size=BATCH_SIZE),
-        steps_per_epoch=50,
-        epochs=99999,
+        steps_per_epoch=200,
+        epochs=args.epochs,
         validation_data=data_classifier.batch_generator('validation', batch_size=BATCH_SIZE, augmented=False),
         validation_steps=10,
         callbacks=[save_model_callback, tensorboard_callback],
