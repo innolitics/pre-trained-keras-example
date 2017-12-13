@@ -11,36 +11,37 @@ function create_cam_gif() {
 function create_cam_frame() {
     model=$1
     character=$2
-    file=$3
-    weight_file=$4
-    CUDA_VISIBLE_DEVICES='' DISPLAY=:2 python cam_animation.py --weight-file $weight_file --data-directory ../data_dir/simpsons_dataset --image-path ../data_dir/simpsons_dataset/$character/$file --cam-path ../data_dir/cam_output/$model/$character/$file
+    weight_file=$3
+    shift; shift; shift;
+    files=$@
+    mkdir -p ../data_dir/cam_output/$model/$character
+    CUDA_VISIBLE_DEVICES='' DISPLAY=:2 python cam_animation.py --weight-file $weight_file --data-directory ../data_dir/simpsons_dataset --cam-path ../data_dir/cam_output/$model/$character --images $files
 
 }
 
-max_jobs=20
+max_jobs=8
 
 if [[ $# == 3 ]]; then
     create_cam_gif $@
 elif [[ $# == 2 ]]; then
     model=$1
     character=$2
-    for file in ../data_dir/simpsons_dataset/$character/*.npz
+    for weight in ../data_dir/weights/$model/*.h5
     do
-        filename=$(basename $file)
-        if [[ -f $file ]]; then
-            for weight in ../data_dir/weights/$model/*.h5
-            do
-                if [[ -f $weight ]]; then
-                    while [ $(jobs | wc -l) -ge $max_jobs ]; do sleep 1; done
-                    echo "create_cam_frame $model $character $filename $weight &"
-                    create_cam_frame $model $character $filename $weight &
-                fi
-            done
-            wait
-            final_gif_name="../data_dir/cam_output/$model/$character/$filename/$character_$filename.gif"
-            convert -delay 30  -size 256x256 ../data_dir/cam_output/$model/$character/$filename/*.png -loop 0 $final_gif_name
+        if [[ -f $weight ]]; then
+            while [ $(jobs | wc -l) -ge $max_jobs ]; do sleep 1; done
+            create_cam_frame $model $character $weight ../data_dir/simpsons_dataset/$character/pic_00*.npz &
         fi
-        echo "Completed CAM generation for $character/$file"
+    done
+    wait
+    for cam_output in ../data_dir/cam_output/$model/$character/*
+    do
+        if [ -d $cam_output ]; then
+            filename=$(basename $cam_output)
+            final_gif_name="$cam_output/$character_$filename.gif"
+            convert -delay 30  -size 256x256 $cam_output/*.png -loop 0 $final_gif_name
+            echo "Completed CAM generation for $character/$filename"
+        fi
     done
 else
     echo "./generate_cam_gifs <model> <character> <npz_file>"

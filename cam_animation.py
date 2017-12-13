@@ -29,7 +29,8 @@ def make_cam_plot(model, weight, image_path, cam_path, data_classifier):
     path_head, npz_name = os.path.split(image_path)
     _, character_name = os.path.split(path_head)
 
-    # print("generating CAM image")
+    model_name = os.path.basename(os.path.dirname(weight))
+
     character_idx = data_classifier.one_hot_index(character_name)
     cam = cam_weighted_image(model, image_path, character_idx)
 
@@ -37,7 +38,6 @@ def make_cam_plot(model, weight, image_path, cam_path, data_classifier):
     inner = gridspec.GridSpec(2, 1, wspace=0.05, hspace=0, height_ratios=[5, 1.2])
     image_ax = plt.Subplot(fig, inner[0])
     labels_ax = plt.Subplot(fig, inner[1])
-    # print("Getting model predictions")
     character_name_to_probability = get_model_predictions_for_npz(model,
                                                                   data_classifier,
                                                                   character_name,
@@ -47,7 +47,6 @@ def make_cam_plot(model, weight, image_path, cam_path, data_classifier):
                                        reverse=True)[:3]
     top_character_names, top_character_probabilities = zip(*top_character_probability)
 
-    # print("Plotting CAM image")
     plot_row_item(image_ax, labels_ax, cam, top_character_names, top_character_probabilities)
     weight_idx = os.path.basename(weight).split('.')[1]
     labels_ax.set_xlabel(npz_name)
@@ -56,55 +55,31 @@ def make_cam_plot(model, weight, image_path, cam_path, data_classifier):
     fig.add_subplot(image_ax)
     fig.add_subplot(labels_ax)
 
-    # print("Saving CAM image")
     plt.savefig(os.path.join(cam_path, 'cam_{}.png'.format(weight_idx)))
     plt.close(fig)
-    # print("Finished.")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate an animation of class-activation maps")
-    # parser.add_argument('--weight-directory', required=True,
-    #                     help="Directory containing the model weight files")
     parser.add_argument('--weight-file', required=True,
                         help="Model weight file")
     parser.add_argument('--data-directory', required=True,
                         help="Directory containing the input *.npz images")
-    parser.add_argument('--image-path', required=True,
-                        help="A specific image path to plot CAM for.")
     parser.add_argument('--cam-path', required=True,
                         help="Directory for storing CAM plots.")
-    # parser.add_argument('--weight-limit', required=False, type=int)
+    parser.add_argument('--images', required=True, nargs="+",
+                        help="Images to plot CAM for.")
     args = parser.parse_args(sys.argv[1:])
 
-    # print('Building data classifier')
     data_classifier = DataClassifier(args.data_directory)
-    # print("...finished!")
 
-    model_name = os.path.basename(os.path.dirname(args.weight_file))
 
-    # print("loading model")
     model = load_model(args.weight_file)
-    make_cam_plot(model, args.weight_file, args.image_path, args.cam_path, data_classifier)
+    for image in tqdm.tqdm(args.images, unit="image"):
+        try:
+            image_cam_path = os.path.join(args.cam_path, os.path.basename(image))
+            os.makedirs(image_cam_path)
+        except OSError as err:
+            if err.errno != os.errno.EEXIST:
+                raise err
 
-    # path_head, npz_name = os.path.split(args.image_path)
-    # _, character_name = os.path.split(path_head)
-
-    # print('Beginning to sort weights in {}'.format(os.path.join(args.weight_directory, '*.h5')))
-    # weights = sorted(list(glob(os.path.join(args.weight_directory, '*.h5'))))
-
-
-
-    # print("Beginning CAM plots")
-
-    # start = summary.summarize(muppy.get_objects())
-
-    # for idx, weight in enumerate(tqdm.tqdm(weights[:args.weight_limit], unit='weights')):
-    #     # cursor = summary.summarize(muppy.get_objects())
-    #     # summary.print_(summary.get_diff(start, cursor))
-    #     if args.weight_limit and idx >= args.weight_limit:
-    #         break
-
-    #     del top_character_names, top_character_probabilities, top_character_probability, character_name_to_probability
-    #     del cam
-    #     del fig
-    #     del model
+        make_cam_plot(model, args.weight_file, image, image_cam_path, data_classifier)
