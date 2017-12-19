@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from keras.models import load_model
 
-from train import DataClassifier
+from train import DataGenerator
 
 num_columns = 6
 num_rows = 3
@@ -32,19 +32,19 @@ def plot_row_item(image_ax, labels_ax, pixels, top_character_names, top_characte
         labelbottom='off')
     image_ax.axis('off')
 
-def plot_prediction(pixels, model, data_classifier):
+def plot_prediction(pixels, model, data_encoder):
     fig = plt.figure()
     inner = gridspec.GridSpec(2, 1, wspace=0.05, hspace=0, height_ratios=[5, 1.2])
     image_ax = plt.Subplot(fig, inner[0])
     labels_ax = plt.Subplot(fig, inner[1])
 
     predicted_labels = model.predict(np.array([pixels]), batch_size=1)
-    character_name_to_probability = data_classifier.one_hot_decode(predicted_labels[0].astype(np.float64))
+    character_name_to_probability = data_encoder.one_hot_decode(predicted_labels[0].astype(np.float64))
     top_character_probability = sorted(character_name_to_probability.items(),
                                        key=lambda item_tup: item_tup[1],
                                        reverse=True)[:3]
     top_character_names, top_character_probabilities = zip(*top_character_probability)
-    character_idx = data_classifier.one_hot_index(top_character_names[0])
+    character_idx = data_encoder.one_hot_index(top_character_names[0])
 
     plot_row_item(image_ax, labels_ax, pixels, top_character_names, top_character_probabilities)
 
@@ -62,12 +62,12 @@ if __name__ =='__main__':
     args = parser.parse_args(sys.argv[1:])
     
     model = load_model(args.weight_file)
-    data_classifier = DataClassifier(args.data_directory)
+    data_encoder = DataGenerator(args.data_directory).encoder
 
     print("{} input image(s) found. Beginning prediction plotting.".format(len(args.image_path)))
 
     for image_path in tqdm.tqdm(args.image_path, unit='image'):
         pixels = np.load(image_path)['pixels']
-        fig = plot_prediction(pixels, model, data_classifier)
+        fig = plot_prediction(pixels, model, data_generator)
         plt.savefig(os.path.join(args.output_directory, os.path.basename(image_path) + 'predictions.png'))
         plt.close(fig)

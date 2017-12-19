@@ -73,7 +73,24 @@ image_datagen = ImageDataGenerator(
     horizontal_flip=True,
     vertical_flip=False,)
 
-class DataClassifier():
+class DataEncoder():
+    def __init__(self, all_character_names):
+        self.all_character_names = all_character_names
+
+    def one_hot_index(self, character_name):
+        return self.all_character_names.index(character_name)
+
+    def one_hot_decode(self, predicted_labels):
+        return dict(zip(self.all_character_names, predicted_labels))
+
+    def one_hot_encode(self, character_name):
+        one_hot_encoded_vector = np.zeros(len(self.all_character_names))
+        idx = self.one_hot_index(character_name)
+        one_hot_encoded_vector[idx] = 1
+        return one_hot_encoded_vector
+
+
+class DataGenerator():
     def __init__(self, data_path):
         self.data_path = data_path
         self.partition_to_character_name_to_npz_paths = {
@@ -95,29 +112,15 @@ class DataClassifier():
             else:
                 raise Exception("partition not assigned")
             self.partition_to_character_name_to_npz_paths[partition][character_name].append(npz_path)
-        self.all_character_names = sorted(list(self.all_character_names))
-
-    def one_hot_encode(self, character_name):
-        one_hot_encoded_vector = np.zeros(len(self.all_character_names))
-        idx = self.one_hot_index(character_name)
-        one_hot_encoded_vector[idx] = 1
-        return one_hot_encoded_vector
+        self.encoder = DataEncoder(sorted(list(self.all_character_names)))
 
 
-    def one_hot_index(self, character_name):
-        return self.all_character_names.index(character_name)
-
-
-    def one_hot_decode(self, predicted_labels):
-        return dict(zip(self.all_character_names, predicted_labels))
-
-
-    def data_generator(self, partition, augmented=True):
+    def _pair_generator(self, partition, augmented=True):
         while True:
             for character_name, npz_paths in self.partition_to_character_name_to_npz_paths[partition].items():
                 npz_path = random.choice(npz_paths)
                 pixels = np.load(npz_path)['pixels']
-                one_hot_encoded_labels = self.one_hot_encode(character_name)
+                one_hot_encoded_labels = self.encoder.one_hot_encode(character_name)
                 if augmented:
                     augmented_pixels = next(image_datagen.flow(np.array([pixels])))[0].astype(np.uint8)
                     yield augmented_pixels, one_hot_encoded_labels
@@ -127,7 +130,7 @@ class DataClassifier():
 
     def batch_generator(self, partition, batch_size, augmented=True):
         while True:
-            data_gen = self.data_generator(partition, augmented)
+            data_gen = self._pair_generator(partition, augmented)
             pixels_batch, one_hot_encoded_character_name_batch = zip(*[next(data_gen) for _ in range(batch_size)])
             pixels_batch = np.array(pixels_batch)
             one_hot_encoded_character_name_batch = np.array(one_hot_encoded_character_name_batch)
@@ -145,21 +148,28 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', required=True, type=int,
                         help="Number of epochs to train over.")
     args = parser.parse_args()
-    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=args.tensorboard_directory, histogram_freq=0, write_graph=True, write_images=False)
-    save_model_callback = keras.callbacks.ModelCheckpoint(os.path.join(args.weight_directory, 'weights.{epoch:02d}.h5'), verbose=3, save_best_only=False, save_weights_only=False, mode='auto', period=1)
 
-    data_classifier = DataClassifier(args.data_dir)
-    model = get_model(args.pretrained_model, data_classifier.all_character_names)
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=args.tensorboard_directory, 
+                                                       histogram_freq=0,
+                                                       write_graph=True,
+                                                       write_images=False)
+    save_model_callback = keras.callbacks.ModelCheckpoint(os.path.join(args.weight_directory, 'weights.{epoch:02d}.h5'),
+                                                          verbose=3,
+                                                          save_best_only=False,
+                                                          save_weights_only=False,
+                                                          mode='auto',
+                                                          period=1)
+
+    data_generator = DataGenerator(args.data_dir)
+    model = get_model(args.pretrained_model, data_generator.all_character_names)
 
     model.fit_generator(
-        data_classifier.batch_generator('train', batch_size=BATCH_SIZE),
+        data_generator.batch_generator('train', batch_size=BATCH_SIZE),
         steps_per_epoch=200,
         epochs=args.epochs,
-        validation_data=data_classifier.batch_generator('validation', batch_size=BATCH_SIZE, augmented=False),
+        validation_data=data_generator.batch_generator('validation', batch_size=BATCH_SIZE, augmented=False),
         validation_steps=10,
         callbacks=[save_model_callback, tensorboard_callback],
         workers=4,
         pickle_safe=True,
     )
-
-

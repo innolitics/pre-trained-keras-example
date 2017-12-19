@@ -1,22 +1,25 @@
 import sys
 import os
 import argparse
-from glob import glob
 
 import tqdm
 import numpy as np
-from scipy.misc import imsave
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from keras.models import load_model
-from vis.visualization.saliency import visualize_saliency, visualize_cam
+from vis.visualization.saliency import visualize_cam
 
-from train import DataClassifier
-from predict import get_model_predictions_for_npz
+from train import DataGenerator
 from visualize import plot_row_item
 
 # Debug purposes only
 # from pympler import muppy, summary 
+
+def get_model_predictions_for_npz(model, data_generator, character_name, npz_name):
+    npz_file_path = os.path.join(data_generator.data_path, character_name, npz_name)
+    pixels = np.load(npz_file_path)['pixels']
+    predicted_labels = model.predict(np.array([pixels]), batch_size=1)
+    return data_generator.encoder.one_hot_decode(predicted_labels[0].astype(np.float64))
 
 def cam_weighted_image(model, image_path, character_idx):
     pixels = np.load(image_path)['pixels']
@@ -25,13 +28,13 @@ def cam_weighted_image(model, image_path, character_idx):
                         seed_input=pixels)
     return np.uint8(pixels*np.dstack([cam]*3))
 
-def make_cam_plot(model, weight, image_path, cam_path, data_classifier):
+def make_cam_plot(model, weight, image_path, cam_path, data_generator):
     path_head, npz_name = os.path.split(image_path)
     _, character_name = os.path.split(path_head)
 
     model_name = os.path.basename(os.path.dirname(weight))
 
-    character_idx = data_classifier.one_hot_index(character_name)
+    character_idx = data_generator.encoder.one_hot_index(character_name)
     cam = cam_weighted_image(model, image_path, character_idx)
 
     fig = plt.figure()
@@ -39,7 +42,7 @@ def make_cam_plot(model, weight, image_path, cam_path, data_classifier):
     image_ax = plt.Subplot(fig, inner[0])
     labels_ax = plt.Subplot(fig, inner[1])
     character_name_to_probability = get_model_predictions_for_npz(model,
-                                                                  data_classifier,
+                                                                  data_generator,
                                                                   character_name,
                                                                   npz_name)
     top_character_probability = sorted(character_name_to_probability.items(),
@@ -70,7 +73,7 @@ if __name__ == '__main__':
                         help="Images to plot CAM for.")
     args = parser.parse_args(sys.argv[1:])
 
-    data_classifier = DataClassifier(args.data_directory)
+    data_generator = DataGenerator(args.data_directory)
 
 
     model = load_model(args.weight_file)
@@ -82,4 +85,4 @@ if __name__ == '__main__':
             if err.errno != os.errno.EEXIST:
                 raise err
 
-        make_cam_plot(model, args.weight_file, image, image_cam_path, data_classifier)
+        make_cam_plot(model, args.weight_file, image, image_cam_path, data_generator)
