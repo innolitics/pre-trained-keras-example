@@ -16,10 +16,10 @@ function create_cam_frame() {
     files=$@
     mkdir -p ../data_dir/cam_output/$model/$character
     CUDA_VISIBLE_DEVICES='' DISPLAY=:2 python cam_animation.py --weight-file $weight_file --data-directory ../data_dir/simpsons_dataset --cam-path ../data_dir/cam_output/$model/$character --images $files
-
 }
 
 max_jobs=8
+max_convert_jobs=20
 
 if [[ $# == 3 ]]; then
     create_cam_gif $@
@@ -39,10 +39,12 @@ elif [[ $# == 2 ]]; then
         if [ -d $cam_output ]; then
             filename=$(basename $cam_output)
             final_gif_name="$cam_output/$character_$filename.gif"
-            convert -delay 30  -size 256x256 $cam_output/*.png -loop 0 $final_gif_name
-            echo "Completed CAM generation for $character/$filename"
+            while [ $(jobs | wc -l) -ge $max_convert_jobs ]; do sleep 1; done
+            convert -delay 30  -size 256x256 $cam_output/*.png -loop 0 $final_gif_name &
         fi
     done
+    wait
+    echo "CAM generation complete."
 else
-    echo "./generate_cam_gifs <model> <character> <npz_file>"
+    echo "./generate_cam_gifs <model> <character> <npz_file (optional)>"
 fi
