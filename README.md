@@ -10,17 +10,17 @@ learning models in Keras using pre-trained models as their basis.
 
 ## Running the Example
 
-1. Download the [example dataset][simpsons-kaggle]
+### 1. Download the [example dataset][simpsons-kaggle]
 
 [simpsons-kaggle]: https://www.kaggle.com/alexattia/the-simpsons-characters-dataset
 
-2. Preprocess the data
+### 2. Preprocess the data
 
 ```bash
 python convert_data.py --data-dir {path-to-data}
 ```
 
-3. Train the model
+### 3. Train the model
 
 ```bash
 python train.py --pretrained_model {model} \
@@ -30,7 +30,7 @@ python train.py --pretrained_model {model} \
                 --epochs {max_epochs}
 ```
 
-4. Visualize model predictions
+### 4. Visualize model predictions
 
 ```bash
 python visualize.py --weight-file {path-to-weight-file} \
@@ -39,7 +39,7 @@ python visualize.py --weight-file {path-to-weight-file} \
                     --image-path {path-to-image-to-visualize}
 ```
 
-5. Generate a CAM plot
+### 5. Generate a CAM plot
 
 ```bash
 python cam_animation.py --weight-directory {path-to-weight-directory} \
