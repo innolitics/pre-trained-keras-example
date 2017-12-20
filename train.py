@@ -161,7 +161,7 @@ if __name__ == '__main__':
                                                           period=1)
 
     data_generator = DataGenerator(args.data_dir)
-    model = get_model(args.pretrained_model, data_generator.all_character_names)
+    model = get_model(args.pretrained_model, data_generator.encoder.all_character_names)
 
     model.fit_generator(
         data_generator.batch_generator('train', batch_size=BATCH_SIZE),
