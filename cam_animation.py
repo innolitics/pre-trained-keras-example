@@ -12,9 +12,6 @@ from vis.visualization.saliency import visualize_cam
 from train import DataGenerator
 from visualize import plot_row_item
 
-# Debug purposes only
-# from pympler import muppy, summary 
-
 def get_model_predictions_for_npz(model, data_generator, character_name, npz_name):
     npz_file_path = os.path.join(data_generator.data_path, character_name, npz_name)
     pixels = np.load(npz_file_path)['pixels']

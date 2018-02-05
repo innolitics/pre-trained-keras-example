@@ -1,59 +1,59 @@
 '''Builds a model, organizes and loads data, and runs model training.'''
 import argparse
 from collections import defaultdict
-
-from keras.layers import Input
-from keras.layers.core import Dense, Flatten, Dropout
-from keras.layers.merge import Concatenate
-from keras.layers.normalization import BatchNormalization
-
-import keras
-import numpy as np
 import os
 import glob
 import random
 
-from keras.layers.pooling import GlobalAveragePooling2D
+import keras
+import numpy as np
+
+from keras.layers import Input, Average
+from keras.layers.core import Dense, Flatten, Dropout
+from keras.layers.merge import Concatenate
+from keras.layers.normalization import BatchNormalization
+from keras.layers.pooling import GlobalAveragePooling2D, GlobalMaxPooling2D
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 
 def get_model(pretrained_model, all_character_names):
     if pretrained_model == 'inception':
-        pretrained_model = keras.applications.inception_v3.InceptionV3(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
+        model_base = keras.applications.inception_v3.InceptionV3(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif pretrained_model == 'xception':
-        pretrained_model = keras.applications.xception.Xception(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
+        model_base = keras.applications.xception.Xception(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif pretrained_model == 'resnet50':
-        pretrained_model = keras.applications.resnet50.ResNet50(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
+        model_base = keras.applications.resnet50.ResNet50(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif pretrained_model == 'vgg19':
-        pretrained_model = keras.applications.vgg19.VGG19(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
+        model_base = keras.applications.vgg19.VGG19(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
     elif pretrained_model == 'all':
         input = Input(shape=(*IMG_SIZE, 3))
         inception_model = keras.applications.inception_v3.InceptionV3(include_top=False, input_tensor=input, weights='imagenet')
         xception_model = keras.applications.xception.Xception(include_top=False, input_tensor=input, weights='imagenet')
         resnet_model = keras.applications.resnet50.ResNet50(include_top=False, input_tensor=input, weights='imagenet')
+
         flattened_outputs = [Flatten()(inception_model.output),
                              Flatten()(xception_model.output),
                              Flatten()(resnet_model.output)]
         output = Concatenate()(flattened_outputs)
-        pretrained_model = Model(input, output)
+        model_base = Model(input, output)
 
-    print(pretrained_model.output.shape.ndims)
-
-    if pretrained_model.output.shape.ndims > 2:
-        output = Flatten()(pretrained_model.output)
-    else:
-        output = pretrained_model.output
-
+    output = model_base.output
     output = BatchNormalization()(output)
     output = Dropout(0.5)(output)
     output = Dense(128, activation='relu')(output)
     output = BatchNormalization()(output)
     output = Dropout(0.5)(output)
     output = Dense(len(all_character_names), activation='softmax')(output)
-    model = Model(pretrained_model.input, output)
-    for layer in pretrained_model.layers:
+    model = Model(model_base.input, output)
+    for layer in model_base.layers:
         layer.trainable = False
     model.summary(line_length=200)
+
+    # Generate a plot of a model
+    import pydot
+    pydot.find_graphviz = lambda: True
+    from keras.utils import plot_model
+    plot_model(model, show_shapes=True, to_file='../model_pdfs/{}.pdf'.format(pretrained_model))
 
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
