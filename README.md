@@ -73,11 +73,11 @@ To make the generation of CAM plots easier, you can use the
 
 ## About Innolitics
 
-[Innolitics][company-site] is a team of talented software developers with medical and
-engineering backgrounds. We help companies produce top quality medical imaging
-and workflow applications.
-
-If you could use help with machine learning applications, let us know! We offer
-training sessions and can provide advice or development services.
+Innolitics is a team of talented software developers with medical and
+engineering backgrounds. Our mission is to accelerate progress in medical
+imaging by sharing knowledge, creating tools, and providing quality services to
+our clients, with the ultimate purpose of improving patient health.  If you are
+working on a project that requires image processing or deep learning expertise,
+let us know!  We offer [consulting and development services][company-site].
 
 [company-site]: https://innolitics.com/
