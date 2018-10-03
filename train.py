@@ -28,7 +28,7 @@ def get_model(pretrained_model, all_character_names):
         output = Flatten()(model_base.output)
     elif pretrained_model == 'vgg19':
         model_base = keras.applications.vgg19.VGG19(include_top=False, input_shape=(*IMG_SIZE, 3), weights='imagenet')
-        output = model_base.output
+        output = Flatten()(model_base.output)
     elif pretrained_model == 'all':
         input = Input(shape=(*IMG_SIZE, 3))
         inception_model = keras.applications.inception_v3.InceptionV3(include_top=False, input_tensor=input, weights='imagenet')
